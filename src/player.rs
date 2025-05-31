@@ -10,7 +10,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_player)
-            .add_systems(Update, update_player);
+            .add_systems(Update, (set_player_zlayer.run_if(run_once), update_player));
     }
 }
 
@@ -18,11 +18,15 @@ fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Sprite {
             image: asset_server.load("player.png"),
-            image_mode: SpriteImageMode::Scale(ScalingMode::FitCenter),
             ..default()
         },
         Player {},
     ));
+}
+
+fn set_player_zlayer(mut query: Query<(&Player, &mut Transform)>) {
+    let mut player = query.single_mut().unwrap().1;
+    player.translation = vec3(-16.0, 16.0, 1.0);
 }
 
 fn update_player(input: Res<ButtonInput<KeyCode>>, mut query: Query<(&Player, &mut Transform)>) {

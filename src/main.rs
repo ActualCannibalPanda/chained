@@ -1,15 +1,13 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
+use player::PlayerPlugin;
 
-const TILE_SIZE: f32 = 32.0;
-
-#[derive(Component)]
-struct Player;
+mod player;
 
 fn main() {
     App::new()
-        .add_plugins(
+        .add_plugins((
             DefaultPlugins
                 .set(AssetPlugin {
                     meta_check: AssetMetaCheck::Never,
@@ -25,38 +23,12 @@ fn main() {
                     }),
                     ..default()
                 }),
-        )
+            PlayerPlugin,
+        ))
         .add_systems(Startup, setup)
-        .add_systems(Update, update_player)
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
-    commands.spawn((
-        Sprite {
-            image: asset_server.load("player.png"),
-            image_mode: SpriteImageMode::Scale(ScalingMode::FitCenter),
-            ..default()
-        },
-        Player {},
-    ));
-}
-
-fn update_player(input: Res<ButtonInput<KeyCode>>, mut query: Query<(&Player, &mut Transform)>) {
-    let mut player = query.single_mut().unwrap().1;
-    let mut delta = Vec3::splat(0.0);
-    if input.just_pressed(KeyCode::KeyA) {
-        delta.x -= TILE_SIZE;
-    }
-    if input.just_pressed(KeyCode::KeyD) {
-        delta.x += TILE_SIZE;
-    }
-    if input.just_pressed(KeyCode::KeyW) {
-        delta.y += TILE_SIZE;
-    }
-    if input.just_pressed(KeyCode::KeyS) {
-        delta.y -= TILE_SIZE
-    }
-    player.translation += delta;
 }

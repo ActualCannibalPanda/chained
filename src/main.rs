@@ -74,11 +74,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 // A system that manipulates tile colors.
-fn update_map(
-    time: Res<Time>,
-    mut tilemap_query: Query<(&TileStorage, &TilemapSize)>,
-    mut tile_query: Query<&mut TileTextureIndex>,
-) {
+fn update_map(mut tile_query: Query<&mut TileTextureIndex>) {
     for mut tile in tile_query.iter_mut() {
         tile.0 = 1;
     }

@@ -7,7 +7,8 @@ pub struct MapPlugin;
 
 impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_map)
+        app.add_plugins(TilemapPlugin)
+            .add_systems(Startup, setup_map)
             .add_systems(Update, update_map.run_if(run_once));
     }
 }
@@ -58,14 +59,20 @@ fn update_map(
     mut tilemap_query: Query<(&TileStorage, &TilemapSize)>,
     mut tile_query: Query<&mut TileTextureIndex>,
 ) {
+    let map = [
+        // 1
+        0, 0, 0, 0, 0, // 2
+        0, 1, 2, 3, 0, // 3
+        0, 3, 2, 1, 0, // 4
+        0, 2, 1, 2, 0, // 5
+        0, 0, 0, 0, 0,
+    ];
     for (tile_storage, _tile_size) in tilemap_query.iter_mut() {
         for x in 0..TILEMAP_SIZE {
             for y in 0..TILEMAP_SIZE {
-                if x > 0 && x < TILEMAP_SIZE - 1 && y > 0 && y < TILEMAP_SIZE - 1 {
-                    if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
-                        if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
-                            tile_texture.0 = 1;
-                        }
+                if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
+                    if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
+                        tile_texture.0 = map[(x * TILEMAP_SIZE + y) as usize];
                     }
                 }
             }

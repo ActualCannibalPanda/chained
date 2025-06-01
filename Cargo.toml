@@ -4,6 +4,14 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 
+[[bin]]
+name = "chained"
+path = "src/main.rs"
+
+[lib]
+name = "chained"
+path = "src/lib.rs"
+
 # Compile with Performance Optimizations:
 # https://bevyengine.org/learn/book/getting-started/setup/#compile-with-performance-optimizations
 

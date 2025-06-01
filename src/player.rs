@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::Anchor};
 
 const TILE_SIZE: f32 = 32.0;
 
@@ -18,6 +18,7 @@ fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Sprite {
             image: asset_server.load("player.png"),
+            anchor: Anchor::TopLeft,
             ..default()
         },
         Player {},

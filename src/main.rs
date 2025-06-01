@@ -1,12 +1,8 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
-use bevy_ecs_tilemap::prelude::*;
-use map::MapPlugin;
-use player::PlayerPlugin;
-
-mod map;
-mod player;
+use chained::map::MapPlugin;
+use chained::player::PlayerPlugin;
 
 fn main() {
     App::new()
@@ -28,7 +24,6 @@ fn main() {
                 }),
             PlayerPlugin,
             MapPlugin,
-            TilemapPlugin,
         ))
         .add_systems(Startup, setup)
         .run();

@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
+const TILEMAP_SIZE: u32 = 5;
+
 pub struct MapPlugin;
 
 impl Plugin for MapPlugin {
@@ -13,7 +15,10 @@ impl Plugin for MapPlugin {
 fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>) {
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
-    let map_size = TilemapSize { x: 2, y: 2 };
+    let map_size = TilemapSize {
+        x: TILEMAP_SIZE,
+        y: TILEMAP_SIZE,
+    };
     let mut tile_storage = TileStorage::empty(map_size);
     let map_type = TilemapType::Square;
 
@@ -49,8 +54,21 @@ fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>) {
     },));
 }
 
-fn update_map(mut tile_query: Query<&mut TileTextureIndex>) {
-    for mut tile in tile_query.iter_mut() {
-        tile.0 = 1;
+fn update_map(
+    mut tilemap_query: Query<(&TileStorage, &TilemapSize)>,
+    mut tile_query: Query<&mut TileTextureIndex>,
+) {
+    for (tile_storage, _tile_size) in tilemap_query.iter_mut() {
+        for x in 0..TILEMAP_SIZE {
+            for y in 0..TILEMAP_SIZE {
+                if x > 0 && x < TILEMAP_SIZE - 1 && y > 0 && y < TILEMAP_SIZE - 1 {
+                    if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
+                        if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
+                            tile_texture.0 = 1;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

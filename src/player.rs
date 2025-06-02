@@ -37,21 +37,34 @@ fn spawn_player(
     }
 }
 
-fn update_player(input: Res<ButtonInput<KeyCode>>, mut query: Query<(&Player, &mut Transform)>) {
+fn update_player(
+    input: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&Player, &mut Transform)>,
+    mut map_query: Query<&mut Map>,
+) {
     if let Ok(mut transform) = query.single_mut() {
-        let mut delta = Vec3::splat(0.0);
-        if input.just_pressed(KeyCode::KeyA) {
-            delta.x -= TILE_SIZE;
+        if let Ok(mut map) = map_query.single_mut() {
+            let mut delta = IVec2::splat(0);
+            if input.just_pressed(KeyCode::KeyA) {
+                delta.x -= 1;
+            }
+            if input.just_pressed(KeyCode::KeyD) {
+                delta.x += 1;
+            }
+            if input.just_pressed(KeyCode::KeyW) {
+                delta.y -= 1;
+            }
+            if input.just_pressed(KeyCode::KeyS) {
+                delta.y += 1;
+            }
+
+            if map.move_player(delta.x, delta.y) {
+                let mut pos = map.player_pos.extend(1.0);
+                pos.x *= TILE_SIZE;
+                // negative as we are moving downwards
+                pos.y *= -TILE_SIZE;
+                transform.1.translation = pos;
+            }
         }
-        if input.just_pressed(KeyCode::KeyD) {
-            delta.x += TILE_SIZE;
-        }
-        if input.just_pressed(KeyCode::KeyW) {
-            delta.y += TILE_SIZE;
-        }
-        if input.just_pressed(KeyCode::KeyS) {
-            delta.y -= TILE_SIZE;
-        }
-        transform.1.translation += delta;
     }
 }

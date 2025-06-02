@@ -32,13 +32,38 @@ impl Map {
             player_pos,
         }
     }
-    pub fn get(&self, x: u32, y: u32) -> u32 {
+    pub fn get(&self, x: i32, y: i32) -> u32 {
         self.map
             .chars()
-            .nth((x * self.width + y) as usize)
+            .nth((x * (self.width as i32) + y) as usize)
             .unwrap()
             .to_digit(10)
             .unwrap()
+    }
+
+    pub fn move_player(&mut self, delta_x: i32, delta_y: i32) -> bool {
+        if delta_x != 0
+            && !self.is_wall(
+                (self.player_pos.x + delta_x as f32) as i32,
+                self.player_pos.y as i32,
+            )
+        {
+            self.player_pos.x += delta_x as f32;
+            return true;
+        } else if delta_y != 0
+            && !self.is_wall(
+                self.player_pos.x as i32,
+                (self.player_pos.y + delta_y as f32) as i32,
+            )
+        {
+            self.player_pos.y += delta_y as f32;
+            return true;
+        }
+        false
+    }
+
+    fn is_wall(&self, x: i32, y: i32) -> bool {
+        self.get(x, y) == 0
     }
 }
 
@@ -110,7 +135,7 @@ fn update_map(
                 for y in 0..TILEMAP_SIZE {
                     if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
                         if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
-                            tile_texture.0 = current_map.get(x, y);
+                            tile_texture.0 = current_map.get(x as i32, y as i32);
                         }
                     }
                 }

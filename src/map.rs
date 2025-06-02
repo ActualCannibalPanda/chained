@@ -91,8 +91,8 @@ fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>, map: Res<Ma
 
     let tilemap_entity = commands.spawn_empty().id();
 
-    for x in 0..map_size.x {
-        for y in 0..map_size.y {
+    for y in 0..map_size.y {
+        for x in 0..map_size.x {
             let tile_pos = TilePos { x, y };
             let tile_entity = commands
                 .spawn(TileBundle {

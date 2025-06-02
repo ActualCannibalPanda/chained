@@ -1,3 +1,4 @@
+pub mod cursor;
 pub mod map;
 pub mod player;
 pub mod state;

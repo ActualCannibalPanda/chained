@@ -1,6 +1,7 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
+use chained::cursor::CursorPlugin;
 use chained::map::MapPlugin;
 use chained::player::PlayerPlugin;
 use chained::state::GameState;
@@ -25,6 +26,7 @@ fn main() {
                 }),
             PlayerPlugin,
             MapPlugin,
+            CursorPlugin,
         ))
         .insert_state(GameState::LoadMap)
         .add_systems(Startup, setup)

@@ -1,6 +1,6 @@
+use crate::{cursor::CursorPos, map::Map, state::GameState};
 use bevy::{prelude::*, sprite::Anchor};
-
-use crate::{map::Map, state::GameState};
+use bevy_ecs_tilemap::prelude::*;
 
 const TILE_SIZE: f32 = 32.0;
 
@@ -11,7 +11,7 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (spawn_player, update_player));
+        app.add_systems(Update, (spawn_player, update_player, get_tilepos));
     }
 }
 
@@ -37,9 +37,43 @@ fn spawn_player(
     }
 }
 
+fn get_tilepos(
+    cursor_pos: Res<CursorPos>,
+    tilemap_query: Query<(
+        &TilemapSize,
+        &TilemapGridSize,
+        &TilemapTileSize,
+        &TilemapType,
+        &TileStorage,
+        &Transform,
+        &TilemapAnchor,
+    )>,
+) {
+    for (map_size, grid_size, tile_size, map_type, _tile_storage, map_transform, anchor) in
+        tilemap_query.iter()
+    {
+        let cursor_pos: Vec2 = cursor_pos.0;
+        let cursor_in_map_pos: Vec2 = {
+            let cursor_pos = Vec4::from((cursor_pos, 0.0, 1.0));
+            (map_transform.compute_matrix().inverse() * cursor_pos).xy()
+        };
+
+        if let Some(tile_pos) = TilePos::from_world_pos(
+            &cursor_in_map_pos,
+            map_size,
+            grid_size,
+            tile_size,
+            map_type,
+            anchor,
+        ) {
+            println!("TilePos {0}, {1}", tile_pos.x, tile_pos.y);
+        }
+    }
+}
+
 fn update_player(
     input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&Player, &mut Transform)>,
+    mut query: Query<(&mut Transform, &Player)>,
     mut map_query: Query<&mut Map>,
 ) {
     if let Ok(mut transform) = query.single_mut() {
@@ -63,7 +97,7 @@ fn update_player(
                 pos.x *= TILE_SIZE;
                 // negative as we are moving downwards
                 pos.y *= -TILE_SIZE;
-                transform.1.translation = pos;
+                transform.0.translation = pos;
             }
         }
     }

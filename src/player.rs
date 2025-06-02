@@ -1,4 +1,5 @@
 use crate::{
+    chain::ChainPos,
     cursor::{CursorPos, CursorTile},
     map::Map,
     state::GameState,
@@ -15,7 +16,10 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (spawn_player, update_player, get_tilepos));
+        app.add_systems(
+            Update,
+            (spawn_player, update_player, get_tilepos, fire_chain),
+        );
     }
 }
 
@@ -36,6 +40,15 @@ fn spawn_player(
             Player {},
         ));
         *state = State::new(GameState::Gameplay);
+    }
+}
+
+fn fire_chain(
+    _cursor_tile: Res<CursorTile>,
+    mut chain_query: Query<&mut Visibility, With<ChainPos>>,
+) {
+    for mut vis in chain_query.iter_mut() {
+        *vis = Visibility::Visible
     }
 }
 

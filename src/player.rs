@@ -19,21 +19,19 @@ fn spawn_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut state: ResMut<State<GameState>>,
-    map_query: Query<&Map>,
+    map: Res<Map>,
 ) {
     if state.get() == &GameState::LoadPlayer {
-        if let Ok(map) = map_query.single() {
-            commands.spawn((
-                Sprite {
-                    image: asset_server.load("player.png"),
-                    anchor: Anchor::TopLeft,
-                    ..default()
-                },
-                Transform::from_xyz(map.player_pos.x * 32.0, map.player_pos.y * -32.0, 1.0),
-                Player {},
-            ));
-            *state = State::new(GameState::Gameplay);
-        }
+        commands.spawn((
+            Sprite {
+                image: asset_server.load("player.png"),
+                anchor: Anchor::TopLeft,
+                ..default()
+            },
+            Transform::from_xyz(map.player_pos.x * 32.0, map.player_pos.y * -32.0, 1.0),
+            Player {},
+        ));
+        *state = State::new(GameState::Gameplay);
     }
 }
 
@@ -73,32 +71,30 @@ fn get_tilepos(
 
 fn update_player(
     input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &Player)>,
-    mut map_query: Query<&mut Map>,
+    mut query: Query<&mut Transform, With<Player>>,
+    mut map: ResMut<Map>,
 ) {
     if let Ok(mut transform) = query.single_mut() {
-        if let Ok(mut map) = map_query.single_mut() {
-            let mut delta = IVec2::splat(0);
-            if input.just_pressed(KeyCode::KeyA) {
-                delta.x -= 1;
-            }
-            if input.just_pressed(KeyCode::KeyD) {
-                delta.x += 1;
-            }
-            if input.just_pressed(KeyCode::KeyW) {
-                delta.y -= 1;
-            }
-            if input.just_pressed(KeyCode::KeyS) {
-                delta.y += 1;
-            }
+        let mut delta = IVec2::splat(0);
+        if input.just_pressed(KeyCode::KeyA) {
+            delta.x -= 1;
+        }
+        if input.just_pressed(KeyCode::KeyD) {
+            delta.x += 1;
+        }
+        if input.just_pressed(KeyCode::KeyW) {
+            delta.y -= 1;
+        }
+        if input.just_pressed(KeyCode::KeyS) {
+            delta.y += 1;
+        }
 
-            if map.move_player(delta.x, delta.y) {
-                let mut pos = map.player_pos.extend(1.0);
-                pos.x *= TILE_SIZE;
-                // negative as we are moving downwards
-                pos.y *= -TILE_SIZE;
-                transform.0.translation = pos;
-            }
+        if map.move_player(delta.x, delta.y) {
+            let mut pos = map.player_pos.extend(1.0);
+            pos.x *= TILE_SIZE;
+            // negative as we are moving downwards
+            pos.y *= -TILE_SIZE;
+            transform.translation = pos;
         }
     }
 }

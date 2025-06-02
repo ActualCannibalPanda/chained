@@ -29,10 +29,15 @@ fn main() {
             CursorPlugin,
         ))
         .insert_state(GameState::LoadMap)
+        .insert_resource(ClearColor(Color::srgb(
+            38.0 / 255.0,
+            43.0 / 255.0,
+            68.0 / 255.0,
+        )))
         .add_systems(Startup, setup)
         .run();
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, Transform::from_xyz(100.0, -100.0, 1.0)));
 }

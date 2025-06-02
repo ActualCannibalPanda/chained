@@ -3,19 +3,31 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::{map_string, state::GameState};
 
-const TILEMAP_SIZE: u32 = 5;
-
 pub struct MapPlugin;
 
 impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(TilemapPlugin)
+            .insert_resource(Map::new(
+                7,
+                7,
+                vec2(1.0, 1.0),
+                map_string!(
+                    "0000000", // 0
+                    "0111110", // 1
+                    "0111110", // 2
+                    "0111110", // 3
+                    "0111110", // 4
+                    "0111110", // 5
+                    "0000000"  // 6
+                ),
+            ))
             .add_systems(Startup, setup_map)
             .add_systems(Update, update_map.run_if(run_once));
     }
 }
 
-#[derive(Component)]
+#[derive(Resource, Clone)]
 pub struct Map {
     pub map: String,
     pub width: u32,
@@ -67,25 +79,12 @@ impl Map {
     }
 }
 
-fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Map::new(
-        5,
-        5,
-        vec2(1.0, 1.0),
-        map_string!(
-            "00000", // 0
-            "01110", // 1
-            "01110", // 2
-            "01110", // 3
-            "00000"  // 4
-        ),
-    ));
-
+fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>, map: Res<Map>) {
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
     let map_size = TilemapSize {
-        x: TILEMAP_SIZE,
-        y: TILEMAP_SIZE,
+        x: map.width,
+        y: map.height,
     };
     let mut tile_storage = TileStorage::empty(map_size);
     let map_type = TilemapType::Square;
@@ -126,16 +125,15 @@ fn update_map(
     mut state: ResMut<State<GameState>>,
     mut tilemap_query: Query<(&TileStorage, &TilemapSize)>,
     mut tile_query: Query<&mut TileTextureIndex>,
-    map: Query<&Map>,
+    map: Res<Map>,
 ) {
     if state.get() == &GameState::LoadMap {
-        let current_map = map.single().unwrap();
         for (tile_storage, _tile_size) in tilemap_query.iter_mut() {
-            for x in 0..TILEMAP_SIZE {
-                for y in 0..TILEMAP_SIZE {
+            for x in 0..map.width {
+                for y in 0..map.height {
                     if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
                         if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
-                            tile_texture.0 = current_map.get(x as i32, y as i32);
+                            tile_texture.0 = map.get(x as i32, y as i32);
                         }
                     }
                 }

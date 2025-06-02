@@ -1,3 +1,4 @@
+pub mod chain;
 pub mod cursor;
 pub mod map;
 pub mod player;

@@ -1,6 +1,7 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
+use chained::chain::ChainPlugin;
 use chained::cursor::CursorPlugin;
 use chained::map::MapPlugin;
 use chained::player::PlayerPlugin;
@@ -24,16 +25,13 @@ fn main() {
                     }),
                     ..default()
                 }),
-            PlayerPlugin,
-            MapPlugin,
+            ChainPlugin,
             CursorPlugin,
+            MapPlugin,
+            PlayerPlugin,
         ))
         .insert_state(GameState::LoadMap)
-        .insert_resource(ClearColor(Color::srgb(
-            38.0 / 255.0,
-            43.0 / 255.0,
-            68.0 / 255.0,
-        )))
+        .insert_resource(ClearColor(Color::srgb(0.14, 0.16, 0.26)))
         .add_systems(Startup, setup)
         .run();
 }

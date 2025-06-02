@@ -27,6 +27,7 @@ fn setup_chain(mut commands: Commands, asset_server: Res<AssetServer>) {
                 anchor: Anchor::TopLeft,
                 ..default()
             },
+            Visibility::Hidden,
             Transform::from_xyz(-100.0 + (i as f32) * 32.0, -100.0, 0.9),
             ChainPos(vec2(0.0, 0.0)),
         ));

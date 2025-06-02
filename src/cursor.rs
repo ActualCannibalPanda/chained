@@ -5,7 +5,16 @@ pub struct CursorPos(pub Vec2);
 
 impl Default for CursorPos {
     fn default() -> Self {
-        Self(Vec2::new(-1000.0, -1000.0))
+        Self(vec2(-1000.0, -1000.0))
+    }
+}
+
+#[derive(Resource)]
+pub struct CursorTile(pub IVec2);
+
+impl Default for CursorTile {
+    fn default() -> Self {
+        Self(ivec2(-1000, -1000))
     }
 }
 
@@ -14,6 +23,7 @@ pub struct CursorPlugin;
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(CursorPos::default())
+            .insert_resource(CursorTile::default())
             .add_systems(Update, update_cursor_pos);
     }
 }

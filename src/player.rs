@@ -1,4 +1,8 @@
-use crate::{cursor::CursorPos, map::Map, state::GameState};
+use crate::{
+    cursor::{CursorPos, CursorTile},
+    map::Map,
+    state::GameState,
+};
 use bevy::{prelude::*, sprite::Anchor};
 use bevy_ecs_tilemap::prelude::*;
 
@@ -37,6 +41,7 @@ fn spawn_player(
 
 fn get_tilepos(
     cursor_pos: Res<CursorPos>,
+    mut cursor_tile: ResMut<CursorTile>,
     tilemap_query: Query<(
         &TilemapSize,
         &TilemapGridSize,
@@ -64,7 +69,7 @@ fn get_tilepos(
             map_type,
             anchor,
         ) {
-            println!("TilePos {0}, {1}", tile_pos.x, tile_pos.y);
+            cursor_tile.0 = ivec2(tile_pos.x as i32, tile_pos.y as i32);
         }
     }
 }

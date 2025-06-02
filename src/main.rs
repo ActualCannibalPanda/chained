@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use chained::map::MapPlugin;
 use chained::player::PlayerPlugin;
+use chained::state::GameState;
 
 fn main() {
     App::new()
@@ -25,6 +26,7 @@ fn main() {
             PlayerPlugin,
             MapPlugin,
         ))
+        .insert_state(GameState::LoadMap)
         .add_systems(Startup, setup)
         .run();
 }

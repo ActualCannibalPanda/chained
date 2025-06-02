@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
+use crate::map_string;
+
 const TILEMAP_SIZE: u32 = 5;
 
 pub struct MapPlugin;
@@ -13,7 +15,46 @@ impl Plugin for MapPlugin {
     }
 }
 
+#[derive(Component)]
+pub struct Map {
+    pub map: String,
+    pub width: u32,
+    pub height: u32,
+    pub player_pos: Vec2,
+}
+
+impl Map {
+    pub fn new(width: u32, height: u32, player_pos: Vec2, map: String) -> Self {
+        Map {
+            width,
+            height,
+            map,
+            player_pos,
+        }
+    }
+    pub fn get(&self, x: u32, y: u32) -> u32 {
+        self.map
+            .chars()
+            .nth((x * self.width + y) as usize)
+            .unwrap()
+            .to_digit(10)
+            .unwrap()
+    }
+}
+
 fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Map::new(
+        5,
+        5,
+        vec2(1.0, 1.0),
+        map_string!(
+            "00000", // 0
+            "01110", // 1
+            "01110", // 2
+            "01110", // 3
+            "00000"  // 4
+        ),
+    ));
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
     let map_size = TilemapSize {
@@ -58,21 +99,15 @@ fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn update_map(
     mut tilemap_query: Query<(&TileStorage, &TilemapSize)>,
     mut tile_query: Query<&mut TileTextureIndex>,
+    map: Query<&Map>,
 ) {
-    let map = [
-        // 1
-        0, 0, 0, 0, 0, // 2
-        0, 1, 2, 3, 0, // 3
-        0, 3, 2, 1, 0, // 4
-        0, 2, 1, 2, 0, // 5
-        0, 0, 0, 0, 0,
-    ];
+    let current_map = map.single().unwrap();
     for (tile_storage, _tile_size) in tilemap_query.iter_mut() {
         for x in 0..TILEMAP_SIZE {
             for y in 0..TILEMAP_SIZE {
                 if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
                     if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
-                        tile_texture.0 = map[(x * TILEMAP_SIZE + y) as usize];
+                        tile_texture.0 = current_map.get(x, y);
                     }
                 }
             }

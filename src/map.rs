@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::map_string;
+use crate::{map_string, state::GameState};
 
 const TILEMAP_SIZE: u32 = 5;
 
@@ -55,6 +55,7 @@ fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>) {
             "00000"  // 4
         ),
     ));
+
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
     let map_size = TilemapSize {
@@ -91,26 +92,30 @@ fn setup_map(mut commands: Commands, asset_server: Res<AssetServer>) {
         map_type,
         texture: TilemapTexture::Single(texture_handle),
         tile_size,
-        anchor: TilemapAnchor::Center,
+        anchor: TilemapAnchor::TopLeft,
         ..Default::default()
     },));
 }
 
 fn update_map(
+    mut state: ResMut<State<GameState>>,
     mut tilemap_query: Query<(&TileStorage, &TilemapSize)>,
     mut tile_query: Query<&mut TileTextureIndex>,
     map: Query<&Map>,
 ) {
-    let current_map = map.single().unwrap();
-    for (tile_storage, _tile_size) in tilemap_query.iter_mut() {
-        for x in 0..TILEMAP_SIZE {
-            for y in 0..TILEMAP_SIZE {
-                if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
-                    if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
-                        tile_texture.0 = current_map.get(x, y);
+    if state.get() == &GameState::LoadMap {
+        let current_map = map.single().unwrap();
+        for (tile_storage, _tile_size) in tilemap_query.iter_mut() {
+            for x in 0..TILEMAP_SIZE {
+                for y in 0..TILEMAP_SIZE {
+                    if let Some(tile) = tile_storage.get(&TilePos { x, y }) {
+                        if let Ok(mut tile_texture) = tile_query.get_mut(tile) {
+                            tile_texture.0 = current_map.get(x, y);
+                        }
                     }
                 }
             }
         }
+        *state = State::new(GameState::LoadPlayer);
     }
 }

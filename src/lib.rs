@@ -1,5 +1,6 @@
 pub mod map;
 pub mod player;
+pub mod state;
 
 #[macro_export]
 macro_rules! map_string {

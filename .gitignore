@@ -46,3 +46,5 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+tiled_export_file.json

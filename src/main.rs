@@ -19,8 +19,7 @@ fn main() {
                     primary_window: Some(Window {
                         title: String::from("Chained"),
                         name: Some(String::from("Chained")),
-                        resolution: WindowResolution::new(800.0, 600.0)
-                            .with_scale_factor_override(1.5),
+                        resolution: WindowResolution::new(800.0, 600.0),
                         ..default()
                     }),
                     ..default()

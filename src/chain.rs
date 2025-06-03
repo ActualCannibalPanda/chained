@@ -24,7 +24,7 @@ fn setup_chain(mut commands: Commands, asset_server: Res<AssetServer>) {
     for i in 0..CHAIN_BUFFER {
         commands.spawn((
             Sprite {
-                image: asset_server.load::<Image>("chain.png"),
+                image: asset_server.load("sprites/chain.png"),
                 anchor: Anchor::TopLeft,
                 ..default()
             },

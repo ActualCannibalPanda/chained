@@ -3,7 +3,7 @@ use std::cmp::{max, min};
 use crate::{
     chain::ChainPos,
     cursor::{CursorPos, CursorTile},
-    map::Map,
+    map::{CurrentMap, PlayerSpawn},
     state::GameState,
 };
 use bevy::{
@@ -11,6 +11,7 @@ use bevy::{
     prelude::*,
     sprite::Anchor,
 };
+use bevy_ecs_tiled::prelude::{TiledMap, from_tiled_position_to_world_space};
 use bevy_ecs_tilemap::prelude::*;
 
 const TILE_SIZE: f32 = 32.0;
@@ -58,51 +59,62 @@ fn spawn_player(
     asset_server: Res<AssetServer>,
     mut state: ResMut<State<GameState>>,
     mut player_pos: ResMut<PlayerPos>,
+    player_spawn_query: Query<&PlayerSpawn>,
+    tiled_assets: Res<Assets<TiledMap>>,
+    current_map: Res<CurrentMap>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    map: Res<Map>,
 ) {
     if state.get() == &GameState::LoadPlayer {
-        let texture = asset_server.load("newplayer.png");
-        let layout = TextureAtlasLayout::from_grid(uvec2(32, 32), 5, 1, None, None);
-        let texture_atlas_layout = texture_atlas_layouts.add(layout);
-        let animation_indicies = AnimationIndices { first: 0, last: 4 };
-        player_pos.0 = ivec2((map.player_pos.x) as i32, (map.player_pos.y) as i32);
-        let mut sprite = Sprite::from_atlas_image(
-            texture,
-            TextureAtlas {
-                layout: texture_atlas_layout,
-                index: animation_indicies.first,
-            },
-        );
-        sprite.anchor = Anchor::TopLeft;
-        commands.spawn((
-            sprite,
-            Transform::from_xyz(
-                player_pos.0.x as f32 * 32.0,
-                player_pos.0.y as f32 * -32.0,
-                1.0,
-            ),
-            Player {},
-            AnimationIndices { first: 0, last: 4 },
-            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-        ));
-        *state = State::new(GameState::Gameplay);
+        if let Some(player) = player_spawn_query.iter().next() {
+            let texture = asset_server.load("sprites/newplayer.png");
+            let layout = TextureAtlasLayout::from_grid(uvec2(32, 32), 5, 1, None, None);
+            let texture_atlas_layout = texture_atlas_layouts.add(layout);
+            let animation_indicies = AnimationIndices { first: 0, last: 4 };
+            let tiled_map = current_map.0.clone().unwrap();
+            let tiled_map = tiled_assets.get(&tiled_map.clone_weak()).unwrap();
+            let position = from_tiled_position_to_world_space(
+                tiled_map,
+                &TilemapAnchor::TopLeft,
+                player.position * TILE_SIZE,
+            );
+            let mut sprite = Sprite::from_atlas_image(
+                texture,
+                TextureAtlas {
+                    layout: texture_atlas_layout,
+                    index: animation_indicies.first,
+                },
+            );
+            sprite.anchor = Anchor::TopLeft;
+            player_pos.0 = ivec2(player.position.x as i32, player.position.y as i32);
+            commands.spawn((
+                sprite,
+                Transform::from_xyz(position.x as f32, position.y as f32, 1.0),
+                Anchor::TopLeft,
+                Player {},
+                AnimationIndices { first: 0, last: 4 },
+                AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            ));
+            *state = State::new(GameState::Gameplay);
+        }
     }
 }
 
 fn animate_sprite(
     time: Res<Time>,
     mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite)>,
+    state: Res<State<GameState>>,
 ) {
-    for (indicies, mut timer, mut sprite) in &mut query {
-        timer.tick(time.delta());
+    if state.get() == &GameState::Gameplay {
+        for (indicies, mut timer, mut sprite) in &mut query {
+            timer.tick(time.delta());
 
-        if timer.just_finished() {
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = if atlas.index == indicies.last {
-                    indicies.first
-                } else {
-                    atlas.index + 1
+            if timer.just_finished() {
+                if let Some(atlas) = &mut sprite.texture_atlas {
+                    atlas.index = if atlas.index == indicies.last {
+                        indicies.first
+                    } else {
+                        atlas.index + 1
+                    }
                 }
             }
         }
@@ -114,9 +126,11 @@ fn fire_chain(
     player_pos: Res<PlayerPos>,
     mut mouse_button_event: EventReader<MouseButtonInput>,
     mut chain_query: Query<(&mut Visibility, &mut ChainPos)>,
+    state: Res<State<GameState>>,
 ) {
-    if (cursor_tile.0.x == player_pos.0.x && cursor_tile.0.y != player_pos.0.y)
-        || (cursor_tile.0.x != player_pos.0.x && cursor_tile.0.y == player_pos.0.y)
+    if state.get() == &GameState::Gameplay
+        && ((cursor_tile.0.x == player_pos.0.x && cursor_tile.0.y != player_pos.0.y)
+            || (cursor_tile.0.x != player_pos.0.x && cursor_tile.0.y == player_pos.0.y))
     {
         for event in mouse_button_event.read() {
             if event.button == MouseButton::Left && event.state == ButtonState::Pressed {
@@ -185,11 +199,7 @@ fn get_tilepos(
     }
 }
 
-fn update_player(
-    input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut Transform, With<Player>>,
-    mut map: ResMut<Map>,
-) {
+fn update_player(input: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Transform, With<Player>>) {
     if let Ok(mut transform) = query.single_mut() {
         let mut delta = IVec2::splat(0);
         if input.just_pressed(KeyCode::KeyA) {
@@ -205,12 +215,12 @@ fn update_player(
             delta.y += 1;
         }
 
-        if map.move_player(delta.x, delta.y) {
-            let mut pos = map.player_pos.extend(1.0);
-            pos.x *= TILE_SIZE;
-            // negative as we are moving downwards
-            pos.y *= -TILE_SIZE;
-            transform.translation = pos;
-        }
+        // if map.move_player(delta.x, delta.y) {
+        //     let mut pos = map.player_pos.extend(1.0);
+        //     pos.x *= TILE_SIZE;
+        //     // negative as we are moving downwards
+        //     pos.y *= -TILE_SIZE;
+        //     transform.translation = pos;
+        // }
     }
 }

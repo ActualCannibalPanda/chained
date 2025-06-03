@@ -30,11 +30,11 @@ fn main() {
             PlayerPlugin,
         ))
         .insert_state(GameState::LoadMap)
-        .insert_resource(ClearColor(Color::srgb(0.14, 0.16, 0.26)))
+        .insert_resource(ClearColor(Color::srgb(0.41, 0.42, 0.42)))
         .add_systems(Startup, setup)
         .run();
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn((Camera2d, Transform::from_xyz(100.0, -100.0, 1.0)));
+    commands.spawn((Camera2d, Transform::from_xyz(400.0, -300.0, 1.0)));
 }

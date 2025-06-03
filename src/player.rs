@@ -21,6 +21,15 @@ struct Player;
 #[derive(Resource)]
 struct PlayerPos(pub IVec2);
 
+#[derive(Component)]
+struct AnimationIndices {
+    first: usize,
+    last: usize,
+}
+
+#[derive(Component, Deref, DerefMut)]
+struct AnimationTimer(Timer);
+
 impl Default for PlayerPos {
     fn default() -> Self {
         Self(ivec2(-1000, -1000))
@@ -33,7 +42,13 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerPos::default()).add_systems(
             Update,
-            (spawn_player, update_player, get_tilepos, fire_chain),
+            (
+                spawn_player,
+                update_player,
+                get_tilepos,
+                fire_chain,
+                animate_sprite,
+            ),
         );
     }
 }
@@ -43,24 +58,54 @@ fn spawn_player(
     asset_server: Res<AssetServer>,
     mut state: ResMut<State<GameState>>,
     mut player_pos: ResMut<PlayerPos>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     map: Res<Map>,
 ) {
     if state.get() == &GameState::LoadPlayer {
+        let texture = asset_server.load("newplayer.png");
+        let layout = TextureAtlasLayout::from_grid(uvec2(32, 32), 5, 1, None, None);
+        let texture_atlas_layout = texture_atlas_layouts.add(layout);
+        let animation_indicies = AnimationIndices { first: 0, last: 4 };
         player_pos.0 = ivec2((map.player_pos.x) as i32, (map.player_pos.y) as i32);
-        commands.spawn((
-            Sprite {
-                image: asset_server.load("player.png"),
-                anchor: Anchor::TopLeft,
-                ..default()
+        let mut sprite = Sprite::from_atlas_image(
+            texture,
+            TextureAtlas {
+                layout: texture_atlas_layout,
+                index: animation_indicies.first,
             },
+        );
+        sprite.anchor = Anchor::TopLeft;
+        commands.spawn((
+            sprite,
             Transform::from_xyz(
                 player_pos.0.x as f32 * 32.0,
                 player_pos.0.y as f32 * -32.0,
                 1.0,
             ),
             Player {},
+            AnimationIndices { first: 0, last: 4 },
+            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
         ));
         *state = State::new(GameState::Gameplay);
+    }
+}
+
+fn animate_sprite(
+    time: Res<Time>,
+    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite)>,
+) {
+    for (indicies, mut timer, mut sprite) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = if atlas.index == indicies.last {
+                    indicies.first
+                } else {
+                    atlas.index + 1
+                }
+            }
+        }
     }
 }
 

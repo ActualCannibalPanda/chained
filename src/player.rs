@@ -3,7 +3,7 @@ use std::cmp::{max, min};
 use crate::{
     chain::ChainPos,
     cursor::{CursorPos, CursorTile},
-    map::{CurrentMap, PlayerSpawn},
+    map::{CurrentMap, MapTile, PlayerSpawn},
     state::GameState,
 };
 use bevy::{
@@ -11,16 +11,16 @@ use bevy::{
     prelude::*,
     sprite::Anchor,
 };
-use bevy_ecs_tiled::prelude::{TiledMap, from_tiled_position_to_world_space};
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tiled::prelude::*;
+use bevy_ecs_tilemap::map::{TilemapTileSize, TilemapType};
 
 const TILE_SIZE: f32 = 32.0;
 
 #[derive(Component)]
 struct Player;
 
-#[derive(Resource)]
-struct PlayerPos(pub IVec2);
+#[derive(Resource, Deref, DerefMut)]
+struct PlayerPos(pub Vec2);
 
 #[derive(Component)]
 struct AnimationIndices {
@@ -33,7 +33,7 @@ struct AnimationTimer(Timer);
 
 impl Default for PlayerPos {
     fn default() -> Self {
-        Self(ivec2(-1000, -1000))
+        Self(vec2(-1000.0, -1000.0))
     }
 }
 
@@ -85,7 +85,8 @@ fn spawn_player(
                 },
             );
             sprite.anchor = Anchor::TopLeft;
-            player_pos.0 = ivec2(player.position.x as i32, player.position.y as i32);
+            player_pos.0 = vec2(player.position.x, player.position.y);
+            println!("{:?}", player_pos.0);
             commands.spawn((
                 sprite,
                 Transform::from_xyz(position.x as f32, position.y as f32, 1.0),
@@ -129,14 +130,15 @@ fn fire_chain(
     state: Res<State<GameState>>,
 ) {
     if state.get() == &GameState::Gameplay
-        && ((cursor_tile.0.x == player_pos.0.x && cursor_tile.0.y != player_pos.0.y)
-            || (cursor_tile.0.x != player_pos.0.x && cursor_tile.0.y == player_pos.0.y))
+        && ((cursor_tile.0.x as f32 == player_pos.0.x && cursor_tile.0.y as f32 != player_pos.0.y)
+            || (cursor_tile.0.x as f32 != player_pos.0.x
+                && cursor_tile.0.y as f32 == player_pos.0.y))
     {
         for event in mouse_button_event.read() {
             if event.button == MouseButton::Left && event.state == ButtonState::Pressed {
-                if cursor_tile.0.x != player_pos.0.x {
-                    let min_x = min(cursor_tile.0.x, player_pos.0.x) + 1;
-                    let max_x = max(cursor_tile.0.x, player_pos.0.x) + 1;
+                if cursor_tile.0.x as f32 != player_pos.0.x {
+                    let min_x = min(cursor_tile.0.x, player_pos.0.x as i32) + 1;
+                    let max_x = max(cursor_tile.0.x, player_pos.0.x as i32) + 1;
                     let mut curr_x = min_x;
                     for (mut vis, mut pos) in chain_query.iter_mut() {
                         *vis = Visibility::Visible;
@@ -147,8 +149,8 @@ fn fire_chain(
                         }
                     }
                 } else {
-                    let min_y = min(cursor_tile.0.y, player_pos.0.y) + 1;
-                    let max_y = max(cursor_tile.0.y, player_pos.0.y) + 1;
+                    let min_y = min(cursor_tile.0.y, player_pos.0.y as i32) + 1;
+                    let max_y = max(cursor_tile.0.y, player_pos.0.y as i32) + 1;
                     let mut curr_y = min_y;
                     for (mut vis, mut pos) in chain_query.iter_mut() {
                         *vis = Visibility::Visible;
@@ -164,63 +166,65 @@ fn fire_chain(
     }
 }
 
-fn get_tilepos(
-    cursor_pos: Res<CursorPos>,
-    mut cursor_tile: ResMut<CursorTile>,
-    tilemap_query: Query<(
-        &TilemapSize,
-        &TilemapGridSize,
-        &TilemapTileSize,
-        &TilemapType,
-        &TileStorage,
-        &Transform,
-        &TilemapAnchor,
-    )>,
-) {
-    for (map_size, grid_size, tile_size, map_type, _tile_storage, map_transform, anchor) in
-        tilemap_query.iter()
-    {
-        let cursor_pos: Vec2 = cursor_pos.0;
-        let cursor_in_map_pos: Vec2 = {
-            let cursor_pos = Vec4::from((cursor_pos, 0.0, 1.0));
-            (map_transform.compute_matrix().inverse() * cursor_pos).xy()
-        };
+fn get_tilepos(cursor_pos: Res<CursorPos>, mut cursor_tile: ResMut<CursorTile>) {
+    let cursor_pos: Vec2 = cursor_pos.0;
 
-        if let Some(tile_pos) = TilePos::from_world_pos(
-            &cursor_in_map_pos,
-            map_size,
-            grid_size,
-            tile_size,
-            map_type,
-            anchor,
-        ) {
-            cursor_tile.0 = ivec2(tile_pos.x as i32, map_size.y as i32 - 1 - tile_pos.y as i32);
-        }
+    if let Some(tile_pos) = TilePos::from_world_pos(
+        &cursor_pos,
+        &TilemapSize::new(15, 15),
+        &TilemapGridSize::new(32.0, 32.0),
+        &TilemapTileSize::new(32.0, 23.0),
+        &TilemapType::Square,
+        &TilemapAnchor::TopLeft,
+    ) {
+        cursor_tile.0 = ivec2(tile_pos.x as i32, tile_pos.y as i32);
     }
 }
 
-fn update_player(input: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Transform, With<Player>>) {
-    if let Ok(mut transform) = query.single_mut() {
-        let mut delta = IVec2::splat(0);
-        if input.just_pressed(KeyCode::KeyA) {
-            delta.x -= 1;
+fn update_player(
+    input: Res<ButtonInput<KeyCode>>,
+    map: Res<CurrentMap>,
+    tiled_assets: Res<Assets<TiledMap>>,
+    mut player_pos: ResMut<PlayerPos>,
+    map_query: Query<(&MapTile, &TilePos)>,
+    mut player_query: Query<&mut Transform, With<Player>>,
+) {
+    let mut delta = Vec2::ZERO;
+    if input.just_pressed(KeyCode::KeyA) {
+        delta.x -= 1.0;
+    }
+    if input.just_pressed(KeyCode::KeyD) {
+        delta.x += 1.0;
+    }
+    if input.just_pressed(KeyCode::KeyW) {
+        delta.y -= 1.0;
+    }
+    if input.just_pressed(KeyCode::KeyS) {
+        delta.y += 1.0;
+    }
+    if delta != Vec2::ZERO {
+        if let Ok(mut player) = player_query.single_mut() {
+            let target_tile = vec2(14.0 - (player_pos.0.x + delta.x), player_pos.0.y + delta.y);
+            for (tile, tile_pos) in map_query.iter() {
+                let tile_pos = vec2(tile_pos.y as f32, tile_pos.x as f32);
+                if tile.is_floor {
+                    println!("{:?}", tile_pos);
+                }
+                if tile_pos == target_tile {
+                    if tile.is_floor {
+                        let tiled_map = map.0.clone().unwrap();
+                        let tiled_map = tiled_assets.get(&tiled_map.clone_weak()).unwrap();
+                        player_pos.0 = vec2(player_pos.0.x + delta.x, player_pos.0.y + delta.y);
+                        player.translation = from_tiled_position_to_world_space(
+                            tiled_map,
+                            &TilemapAnchor::TopLeft,
+                            player_pos.0 * 32.0,
+                        )
+                        .extend(1.0)
+                    }
+                    break;
+                }
+            }
         }
-        if input.just_pressed(KeyCode::KeyD) {
-            delta.x += 1;
-        }
-        if input.just_pressed(KeyCode::KeyW) {
-            delta.y -= 1;
-        }
-        if input.just_pressed(KeyCode::KeyS) {
-            delta.y += 1;
-        }
-
-        // if map.move_player(delta.x, delta.y) {
-        //     let mut pos = map.player_pos.extend(1.0);
-        //     pos.x *= TILE_SIZE;
-        //     // negative as we are moving downwards
-        //     pos.y *= -TILE_SIZE;
-        //     transform.translation = pos;
-        // }
     }
 }

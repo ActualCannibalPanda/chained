@@ -31,6 +31,7 @@ impl Plugin for MapPlugin {
 #[reflect(Default, Component)]
 pub struct MapTile {
     pub is_wall: bool,
+    pub is_floor: bool,
 }
 
 #[derive(Default, Debug, Component, Reflect)]

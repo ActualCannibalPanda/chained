@@ -10,11 +10,11 @@ impl Default for CursorPos {
 }
 
 #[derive(Resource)]
-pub struct CursorTile(pub IVec2);
+pub struct CursorTile(pub Vec2);
 
 impl Default for CursorTile {
     fn default() -> Self {
-        Self(ivec2(-1000, -1000))
+        Self(vec2(-1000.0, -1000.0))
     }
 }
 

@@ -126,39 +126,65 @@ fn fire_chain(
     cursor_tile: Res<CursorTile>,
     player_pos: Res<PlayerPos>,
     mut mouse_button_event: EventReader<MouseButtonInput>,
-    mut chain_query: Query<(&mut Visibility, &mut ChainPos)>,
+    mut chain_query: Query<(&mut Visibility, &mut Transform, &mut ChainPos)>,
     state: Res<State<GameState>>,
 ) {
     if state.get() == &GameState::Gameplay
-        && ((cursor_tile.0.x as f32 == player_pos.0.x && cursor_tile.0.y as f32 != player_pos.0.y)
-            || (cursor_tile.0.x as f32 != player_pos.0.x
-                && cursor_tile.0.y as f32 == player_pos.0.y))
+        && ((cursor_tile.0.x == player_pos.0.x && cursor_tile.0.y != player_pos.0.y)
+            || (cursor_tile.0.x != player_pos.0.x && cursor_tile.0.y == player_pos.0.y))
     {
         for event in mouse_button_event.read() {
             if event.button == MouseButton::Left && event.state == ButtonState::Pressed {
-                if cursor_tile.0.x as f32 != player_pos.0.x {
-                    let min_x = min(cursor_tile.0.x, player_pos.0.x as i32) + 1;
-                    let max_x = max(cursor_tile.0.x, player_pos.0.x as i32) + 1;
+                if cursor_tile.0.x != player_pos.0.x {
+                    let dir = if player_pos.0.x < cursor_tile.0.x {
+                        1.0
+                    } else {
+                        -1.0
+                    };
+                    let min_x = min(cursor_tile.0.x as i32, player_pos.0.x as i32) as f32
+                        + if dir < 0.0 { 0.0 } else { 1.0 };
+                    let max_x = max(cursor_tile.0.x as i32, player_pos.0.x as i32) as f32
+                        + if dir < 0.0 { 0.0 } else { 1.0 };
                     let mut curr_x = min_x;
-                    for (mut vis, mut pos) in chain_query.iter_mut() {
-                        *vis = Visibility::Visible;
-                        pos.0 = vec2(curr_x as f32, cursor_tile.0.y as f32);
-                        curr_x += 1;
+                    for (mut vis, mut transform, mut pos) in chain_query.iter_mut() {
                         if curr_x == max_x {
-                            break;
+                            *vis = Visibility::Hidden;
+                            continue;
                         }
+                        *vis = Visibility::Visible;
+                        pos.0 = vec2(curr_x, cursor_tile.0.y);
+                        curr_x += 1.0;
+                        transform.rotation = Quat::IDENTITY;
                     }
                 } else {
-                    let min_y = min(cursor_tile.0.y, player_pos.0.y as i32) + 1;
-                    let max_y = max(cursor_tile.0.y, player_pos.0.y as i32) + 1;
+                    let dir = if player_pos.0.y < cursor_tile.0.y {
+                        -1.0
+                    } else {
+                        1.0
+                    };
+                    let min_y = min(cursor_tile.0.y as i32, player_pos.0.y as i32) as f32
+                        + if dir < 0.0 { 0.0 } else { 1.0 };
+                    let max_y = max(cursor_tile.0.y as i32, player_pos.0.y as i32) as f32
+                        + if dir < 0.0 { 0.0 } else { 1.0 };
                     let mut curr_y = min_y;
-                    for (mut vis, mut pos) in chain_query.iter_mut() {
-                        *vis = Visibility::Visible;
-                        pos.0 = vec2(cursor_tile.0.x as f32, curr_y as f32);
-                        curr_y += 1;
+                    for (mut vis, mut transform, mut pos) in chain_query.iter_mut() {
                         if curr_y == max_y {
-                            break;
+                            *vis = Visibility::Hidden;
+                            continue;
                         }
+                        *vis = Visibility::Visible;
+                        pos.0 = vec2(cursor_tile.0.x, curr_y);
+                        curr_y += 1.0;
+                        transform.rotation = Quat::IDENTITY;
+                        let copy_transform = *transform;
+                        transform.rotate_around(
+                            vec3(
+                                copy_transform.translation.x + 16.0,
+                                copy_transform.translation.y + 16.0,
+                                0.0,
+                            ),
+                            Quat::from_euler(EulerRot::YXZ, 0.0, 0.0, 90.0_f64.to_radians() as f32),
+                        );
                     }
                 }
             }
@@ -177,7 +203,7 @@ fn get_tilepos(cursor_pos: Res<CursorPos>, mut cursor_tile: ResMut<CursorTile>) 
         &TilemapType::Square,
         &TilemapAnchor::TopLeft,
     ) {
-        cursor_tile.0 = ivec2(tile_pos.x as i32, tile_pos.y as i32);
+        cursor_tile.0 = vec2(tile_pos.x as f32, 14.0 - tile_pos.y as f32);
     }
 }
 
@@ -207,9 +233,6 @@ fn update_player(
             let target_tile = vec2(14.0 - (player_pos.0.x + delta.x), player_pos.0.y + delta.y);
             for (tile, tile_pos) in map_query.iter() {
                 let tile_pos = vec2(tile_pos.y as f32, tile_pos.x as f32);
-                if tile.is_floor {
-                    println!("{:?}", tile_pos);
-                }
                 if tile_pos == target_tile {
                     if tile.is_floor {
                         let tiled_map = map.0.clone().unwrap();
